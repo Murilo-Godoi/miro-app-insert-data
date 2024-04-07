@@ -1,5 +1,6 @@
 import * as React from "react";
 import { createRoot } from "react-dom/client";
+import { useState } from "react";
 
 import "../src/assets/style.css";
 
@@ -98,8 +99,6 @@ const uploadNotes = async () => {
 
 }
 
-
-
 const clickHandler = async () => {
     const tags = await miro.board.get({ type: 'tag' })
     tagIds = tags.reduce((acc, tag) => {
@@ -107,7 +106,6 @@ const clickHandler = async () => {
         acc[title] = id;
         return acc;
     }, {});
-    console.log(tagIds)
 
     uploadTags()
     uploadNotes()
@@ -115,20 +113,87 @@ const clickHandler = async () => {
 };
 
 const App = () => {
+    const [jsonData, setJsonData] = useState(null);
+
+    const fileSelectedHandler = (event) => {
+
+        const selectedFile = event.target.files[0]; 
+        
+        if (selectedFile) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const csv = event.target.result;
+                const jsonData = csvJSON(csv);
+                setJsonData(jsonData)
+            };
+            reader.readAsText(selectedFile);
+        }
+    };
+
+    function csvJSON(csv){
+
+        var lines=csv.split("\n");
+      
+        var result = [];
+      
+        var headers=lines[0].split(",");
+      
+        for(var i=1;i<lines.length;i++){
+      
+            var obj = {};
+            var currentline=lines[i].split(",");
+      
+            for(var j=0;j<headers.length;j++){
+                obj[headers[j]] = currentline[j];
+            }
+      
+            result.push(obj);
+      
+        }
+        return result; 
+    }
+
     return (
         <div className="grid wrapper">
             <div className="cs1 ce12">
-                <img src="/src/assets/congratulations.png" alt="" />
+                <button
+                    className="button button-primary button-medium"
+                    type="button"
+                    onClick={clickHandler}
+                >
+                    <span className="icon-eye"></span>
+                    Puxar dados
+                </button>
             </div>
-
-            <button
-                className="button button-primary button-medium"
-                type="button"
-                onClick={clickHandler}
-            >
-                <span className="icon-eye"></span>
-                Puxar dados
-            </button>
+            
+            <div className="form-group cs1 ce12">
+                <label htmlFor="example-1">Input label</label>
+                <input className="input" type="file" id="example-1" onChange={fileSelectedHandler} accept=".csv"/>
+            </div>
+            
+            {jsonData && (
+                <div className="cs1 ce12">
+                    <table>
+                        <thead>
+                            <tr>
+                                {Object.keys(jsonData[0]).map((key, index) => (
+                                    <th key={index}>{key}</th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {jsonData.slice(0, 5).map((row, index) => (
+                                <tr key={index}>
+                                    {Object.values(row).map((value, index) => (
+                                        <td key={index}>{value}</td>
+                                    ))}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+            
         </div>
     );
 };
