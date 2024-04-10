@@ -48,72 +48,75 @@ const ml_data = [
         ml_category: "Market",
     },
 ];
-// isso vai vir da base no futuro
-const uniqueCategories = [...new Set(ml_data.map(item => item.ml_category))];
 
 
 let tagIds = {} // object -> {tagName:tagID, tagName2: tagID2, ...} (pra um item poder ter mais de uma tag vai ter q mudar essa estrutura)
 
-const uploadTags = async () => {
-    const colors = ['red', 'yellow', 'green'] // para ter mais de 3 tags o ideal seria acrescentar cores nesse array
-    for (let i = 0; i < uniqueCategories.length; i++) {
-        const tagTitle = uniqueCategories[i]
-        if (!(tagTitle in tagIds)) {
-            const tag = await miro.board.createTag({
-                title: tagTitle,
-                color: colors[i],
-            });
-            tagIds[tag.title] = tag.id
-        }
-    }
-}
-
-const uploadNotes = async () => {
-    const position = {
-        x: 0,
-        y: 0,
-        width: 200,
-        height: 200
-    }
-
-    for (const item of ml_data) {
-        // essa find empty space nao funcionou dentro do foreach, talvez seja rapido de mais pra ela
-        // const position = await miro.board.findEmptySpace({
-        //     x: 0,
-        //     y: 0,
-        //     width: 200,
-        //     height: 200,
-        // });
-
-        await miro.board.createStickyNote({
-            content: `<p>${item.text}</p>`,
-            x: position.x,
-            y: position.y,
-            shape: "square",
-            width: position.width,
-            tagIds: [tagIds[item.ml_category]]
-        });
-        position.x = position.x < 1000 ? position.x + 250 : position.x = 0
-        position.y = position.x === 0 ? position.y + 250 : position.y
-    }
-
-}
-
-const clickHandler = async () => {
-    const tags = await miro.board.get({ type: 'tag' })
-    tagIds = tags.reduce((acc, tag) => {
-        const { title, id } = tag;
-        acc[title] = id;
-        return acc;
-    }, {});
-
-    uploadTags()
-    uploadNotes()
-
-};
-
 const App = () => {
     const [jsonData, setJsonData] = useState(null);
+    const [selectedColumns, setSelectedColumns] = useState([]);
+    const [dataColumn, setDataColumn] = useState("");
+    const [labelColumn, setLabelColumn] = useState("");
+    const [uniqueCategories, setUniqueCategories] = useState([])
+
+    const uploadTags = async () => {
+        const colors = ['red', 'yellow', 'green'] // para ter mais de 3 tags o ideal seria acrescentar cores nesse array
+        for (let i = 0; i < uniqueCategories.length; i++) {
+            const tagTitle = uniqueCategories[i]
+            if (!(tagTitle in tagIds)) {
+                const tag = await miro.board.createTag({
+                    title: tagTitle,
+                    color: colors[i],
+                });
+                tagIds[tag.title] = tag.id
+            }
+        }
+    }
+    
+    const uploadNotes = async () => {
+        const position = {
+            x: 0,
+            y: 0,
+            width: 200,
+            height: 200
+        }
+    
+        for (const item of jsonData) {
+            // essa find empty space nao funcionou dentro do foreach, talvez seja rapido de mais pra ela
+            // const position = await miro.board.findEmptySpace({
+            //     x: 0,
+            //     y: 0,
+            //     width: 200,
+            //     height: 200,
+            // });
+    
+            await miro.board.createStickyNote({
+                content: `<p>${item.dataColumn}</p>`,
+                x: position.x,
+                y: position.y,
+                shape: "square",
+                width: position.width,
+                tagIds: [tagIds[item.dataColumn]]
+            });
+            position.x = position.x < 1000 ? position.x + 250 : position.x = 0
+            position.y = position.x === 0 ? position.y + 250 : position.y
+        }
+    
+    }
+    
+
+    const clickHandler = async () => {
+        const tags = await miro.board.get({ type: 'tag' })
+        tagIds = tags.reduce((acc, tag) => {
+            const { title, id } = tag;
+            acc[title] = id;
+            return acc;
+        }, {});
+    
+        uploadTags()
+        uploadNotes()
+    
+    };
 
     const fileSelectedHandler = (event) => {
 
@@ -124,7 +127,9 @@ const App = () => {
             reader.onload = function(event) {
                 const csv = event.target.result;
                 const jsonData = csvJSON(csv);
-                setJsonData(jsonData)
+                setJsonData(jsonData);
+                setSelectedColumns(Object.keys(jsonData[0]));
+                console.log(jsonData)
             };
             reader.readAsText(selectedFile);
         }
@@ -153,6 +158,16 @@ const App = () => {
         return result; 
     }
 
+    const handleDataSelectChange = (event) => {
+        setDataColumn(event.target.value);
+    };
+
+    const handleLabelSelectChange = (event) => {
+        const label = event.target.value;
+        setLabelColumn(label)
+        setUniqueCategories([...new Set(jsonData.map(item => item.label))])
+    };
+
     return (
         <div className="grid wrapper">
             <div className="cs1 ce12">
@@ -173,24 +188,24 @@ const App = () => {
             
             {jsonData && (
                 <div className="cs1 ce12">
-                    <table>
-                        <thead>
-                            <tr>
-                                {Object.keys(jsonData[0]).map((key, index) => (
-                                    <th key={index}>{key}</th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {jsonData.slice(0, 5).map((row, index) => (
-                                <tr key={index}>
-                                    {Object.values(row).map((value, index) => (
-                                        <td key={index}>{value}</td>
-                                    ))}
-                                </tr>
+                    <div>
+                        <label>Select Data Column:</label>
+                        <select value={dataColumn} onChange={handleDataSelectChange}>
+                            <option value="">None</option>
+                            {selectedColumns.map((column, index) => (
+                                <option key={index} value={column}>{column}</option>
                             ))}
-                        </tbody>
-                    </table>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Select Label Column:</label>
+                        <select value={labelColumn} onChange={handleLabelSelectChange}>
+                            <option value="">None</option>
+                            {selectedColumns.map((column, index) => (
+                                <option key={index} value={column}>{column}</option>
+                            ))}
+                        </select>
+                    </div>
                 </div>
             )}
             
