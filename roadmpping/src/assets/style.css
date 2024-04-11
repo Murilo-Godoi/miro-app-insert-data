@@ -20,3 +20,15 @@ img {
   max-width: 100%;
   height: auto;
 }
+
+input[type="file"] {
+  display: none;
+}
+
+.labelHoverPointer:hover{
+  cursor: pointer;
+}
+
+.buttonUpload{
+  margin-top: 1rem;
+}

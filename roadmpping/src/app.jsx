@@ -67,7 +67,6 @@ const App = () => {
     
     }
     
-
     const clickHandler = async () => {
         
         await uploadTags();
@@ -120,8 +119,7 @@ const App = () => {
         }
     
         return result.slice(0,100);
-    }
-    
+    };
 
     const handleDataSelectChange = (event) => {
         setDataColumn(event.target.value);
@@ -135,27 +133,17 @@ const App = () => {
 
     return (
         <div className="grid wrapper">
-            <div className="cs1 ce12">
-                <button
-                    className="button button-primary button-medium"
-                    type="button"
-                    onClick={clickHandler}
-                >
-                    <span className="icon-eye"></span>
-                    Puxar dados
-                </button>
-            </div>
             
             <div className="form-group cs1 ce12">
-                <label htmlFor="example-1">Input label</label>
-                <input className="input" type="file" id="example-1" onChange={fileSelectedHandler} accept=".csv"/>
+                <label className="label labelHoverPointer" htmlFor="fileInput">Escolher arquivo</label>
+                <input className="input" type="file" id="fileInput" onChange={fileSelectedHandler} accept=".csv"/>
             </div>
             
             {jsonData && (
                 <div className="cs1 ce12">
                     <div>
-                        <label>Select Data Column:</label>
-                        <select value={dataColumn} onChange={handleDataSelectChange}>
+                        <label className="label" htmlFor="selectDataColumn">Select Data Column:</label>
+                        <select id="selectDataColumn" className="select" value={dataColumn} onChange={handleDataSelectChange}>
                             <option value="">None</option>
                             {columns.map((column, index) => (
                                 <option key={index} value={column}>{column}</option>
@@ -163,15 +151,27 @@ const App = () => {
                         </select>
                     </div>
                     <div>
-                        <label>Select Label Column:</label>
-                        <select value={labelColumn} onChange={handleLabelSelectChange}>
+                        <label className="label" htmlFor="selectLabelColumn">Select Label Column:</label>
+                        <select id="selectLabelColumn" className="select" value={labelColumn} onChange={handleLabelSelectChange}>
                             <option value="">None</option>
                             {columns.map((column, index) => (
                                 <option key={index} value={column}>{column}</option>
                             ))}
                         </select>
                     </div>
+                    <div className="cs1 ce12 buttonUpload">
+                        <button
+                            className="button button-primary button-medium"
+                            type="button"
+                            onClick={clickHandler}
+                        >
+                            <span className="icon-eye"></span>
+                            Importar dados
+                        </button>
+                    </div>
                 </div>
+
+                
             )}
             
         </div>
