@@ -1,77 +1,47 @@
 import * as React from "react";
 import { createRoot } from "react-dom/client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import "../src/assets/style.css";
 
-//ml = machine learning
-// isso vai vir da base no futuro
-const ml_data = [
-    {
-        text: "A pesquisa global Indústria 4.0 reúne a opinião de mais de 2 mil participantes dos nove maiores setores industriais em 26 países.",
-        ml_category: "Market",
-    },
-    {
-        text: "Atualmente, apenas 9% das empresas brasileiras se classificam como avançadas em níveis de digitização, mas em 2020 esse percentual deve saltar para 72%.",
-        ml_category: "Market",
-    },
-    {
-        text: "No fim desse processo de transformação, as empresas bem-sucedidas se tornarão verdadeiramente digitais, com produtos físicos em seu núcleo, potencializados por interfaces digitais e serviços inovadores baseados em dados.",
-        ml_category: "Technology",
-    },
-    {
-        text: "A maior parte das empresas brasileiras concorda que, ao longo dos próximos cinco anos, os ganhos nessas três frentes serão maiores que 10% de sua receita.",
-        ml_category: "Market",
-    },
-    {
-        text: "Com alto investimento em tecnologia e treinamento, elas veem a sua transformação digital principalmente em termos de ganhos de eficiência operacional, redução de custos e garantia de qualidade.",
-        ml_category: "Product",
-    },
-    {
-        text: "As empresas brasileiras não fazem grandes investimentos atualmente _x0096_ apenas 10% delas investem mais de 8% de sua receita.",
-        ml_category: "Market",
-    },
-    {
-        text: "Certifique-se de que a liderança da empresa está pronta e disposta a defender a sua abordagem.",
-        ml_category: "Market",
-    },
-    {
-        text: "O _x0093_tom_x0094_ deve ser definido pelo topo, com liderança clara, comprometimento e visão dos executivos e stakeholders financeiros.",
-        ml_category: "Technology",
-    },
-    {
-        text: "Desenvolva produtos e serviços completos para seus clientes.",
-        ml_category: "Technology",
-    },
-    {
-        text: "A indústria 4.0 significa uma grande revolução para as empresas que compreendem inteiramente o que ela representa para a maneira como elas fazem negócios.",
-        ml_category: "Market",
-    },
-];
-
-
-let tagIds = {} // object -> {tagName:tagID, tagName2: tagID2, ...} (pra um item poder ter mais de uma tag vai ter q mudar essa estrutura)
-
 const App = () => {
     const [jsonData, setJsonData] = useState(null);
-    const [selectedColumns, setSelectedColumns] = useState([]);
-    const [dataColumn, setDataColumn] = useState("");
-    const [labelColumn, setLabelColumn] = useState("");
-    const [uniqueCategories, setUniqueCategories] = useState([])
+    const [columns, setColumns] = useState([]); // colunas do arquivo csv importado
+    const [dataColumn, setDataColumn] = useState(""); // coluna que vai ser usada como texto dos post its
+    const [labelColumn, setLabelColumn] = useState(""); // coluna que vai ser usada como tag
+    const [uniqueCategories, setUniqueCategories] = useState([]); // valores unicos da coluna label
+    const [tagIds, setTagIds] = useState({}); // ids das labels dentro do Miro
+
+    // sem o useEffect, ele chama o uploadNotes antes de 
+    // terminar o setTagIds (tentei usar await mas só nao funcionou)
+    useEffect(() => {
+        if (Object.keys(tagIds).length > 0 && jsonData) {
+            uploadNotes();
+        }
+    }, [tagIds, jsonData]);
 
     const uploadTags = async () => {
-        const colors = ['red', 'yellow', 'green'] // para ter mais de 3 tags o ideal seria acrescentar cores nesse array
+        const colors = ['red', 'yellow', 'green']; // para ter mais de 3 tags o ideal seria acrescentar cores nesse array
+        const tags = await miro.board.get({ type: 'tag' });
+        const tagIdsObject = {};
+    
         for (let i = 0; i < uniqueCategories.length; i++) {
-            const tagTitle = uniqueCategories[i]
-            if (!(tagTitle in tagIds)) {
-                const tag = await miro.board.createTag({
+            const tagTitle = uniqueCategories[i];
+            const existingTag = tags.find(tag => tag.title === tagTitle);
+    
+            if (!existingTag) {
+                const newTag = await miro.board.createTag({
                     title: tagTitle,
-                    color: colors[i],
+                    color: colors[i % colors.length], // se tiver mais de 3 tags n vai dar erro assim
                 });
-                tagIds[tag.title] = tag.id
+                tagIdsObject[tagTitle] = newTag.id;
+            } else {
+                tagIdsObject[tagTitle] = existingTag.id;
             }
         }
-    }
+    
+        setTagIds(tagIdsObject);
+    };
     
     const uploadNotes = async () => {
         const position = {
@@ -82,21 +52,14 @@ const App = () => {
         }
     
         for (const item of jsonData) {
-            // essa find empty space nao funcionou dentro do foreach, talvez seja rapido de mais pra ela
-            // const position = await miro.board.findEmptySpace({
-            //     x: 0,
-            //     y: 0,
-            //     width: 200,
-            //     height: 200,
-            // });
-    
+
             await miro.board.createStickyNote({
-                content: `<p>${item.dataColumn}</p>`,
+                content: `<p>${item[dataColumn]}</p>`,
                 x: position.x,
                 y: position.y,
                 shape: "square",
                 width: position.width,
-                tagIds: [tagIds[item.dataColumn]]
+                tagIds: [tagIds[item[labelColumn]]]
             });
             position.x = position.x < 1000 ? position.x + 250 : position.x = 0
             position.y = position.x === 0 ? position.y + 250 : position.y
@@ -106,16 +69,9 @@ const App = () => {
     
 
     const clickHandler = async () => {
-        const tags = await miro.board.get({ type: 'tag' })
-        tagIds = tags.reduce((acc, tag) => {
-            const { title, id } = tag;
-            acc[title] = id;
-            return acc;
-        }, {});
-    
-        uploadTags()
-        uploadNotes()
-    
+        
+        await uploadTags();
+
     };
 
     const fileSelectedHandler = (event) => {
@@ -128,35 +84,44 @@ const App = () => {
                 const csv = event.target.result;
                 const jsonData = csvJSON(csv);
                 setJsonData(jsonData);
-                setSelectedColumns(Object.keys(jsonData[0]));
-                console.log(jsonData)
+                setColumns(Object.keys(jsonData[0]))
             };
             reader.readAsText(selectedFile);
         }
     };
 
-    function csvJSON(csv){
-
-        var lines=csv.split("\n");
-      
-        var result = [];
-      
-        var headers=lines[0].split(",");
-      
-        for(var i=1;i<lines.length;i++){
-      
-            var obj = {};
-            var currentline=lines[i].split(",");
-      
-            for(var j=0;j<headers.length;j++){
-                obj[headers[j]] = currentline[j];
+    function csvJSON(csv) {
+        const lines = csv.split("\n");
+        const headers = lines[0].split(",");
+        const result = [];
+    
+        for (let i = 1; i < lines.length; i++) {
+            const obj = {};
+            let currentLine = lines[i].split(",");
+            if (currentLine.length > headers.length) {
+                // linhas em que um dos itens tem vírgula
+                let currentIndex = 0;
+                for (let j = 0; j < currentLine.length; j++) {
+                    if (currentLine[j].startsWith('"')) {
+                        while (!currentLine[j].endsWith('"')) {
+                            currentLine[j] += ',' + currentLine[j + 1];
+                            currentLine.splice(j + 1, 1);
+                        }
+                    }
+                    obj[headers[currentIndex]] = currentLine[j];
+                    currentIndex++;
+                }
+            } else {
+                for (let j = 0; j < headers.length; j++) {
+                    obj[headers[j]] = currentLine[j];
+                }
             }
-      
             result.push(obj);
-      
         }
-        return result; 
+    
+        return result.slice(0,100);
     }
+    
 
     const handleDataSelectChange = (event) => {
         setDataColumn(event.target.value);
@@ -165,7 +130,7 @@ const App = () => {
     const handleLabelSelectChange = (event) => {
         const label = event.target.value;
         setLabelColumn(label)
-        setUniqueCategories([...new Set(jsonData.map(item => item.label))])
+        setUniqueCategories([...new Set(jsonData.map(item => item[label]))])
     };
 
     return (
@@ -192,7 +157,7 @@ const App = () => {
                         <label>Select Data Column:</label>
                         <select value={dataColumn} onChange={handleDataSelectChange}>
                             <option value="">None</option>
-                            {selectedColumns.map((column, index) => (
+                            {columns.map((column, index) => (
                                 <option key={index} value={column}>{column}</option>
                             ))}
                         </select>
@@ -201,7 +166,7 @@ const App = () => {
                         <label>Select Label Column:</label>
                         <select value={labelColumn} onChange={handleLabelSelectChange}>
                             <option value="">None</option>
-                            {selectedColumns.map((column, index) => (
+                            {columns.map((column, index) => (
                                 <option key={index} value={column}>{column}</option>
                             ))}
                         </select>
