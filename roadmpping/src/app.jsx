@@ -61,7 +61,7 @@ const App = () => {
                 width: position.width,
                 tagIds: [tagIds[item[labelColumn]]]
             });
-            position.x = position.x < 1000 ? position.x + 250 : position.x = 0
+            position.x = position.x < 2000 ? position.x + 250 : position.x = 0
             position.y = position.x === 0 ? position.y + 250 : position.y
         }
     
@@ -142,7 +142,7 @@ const App = () => {
             {jsonData && (
                 <div className="cs1 ce12">
                     <div>
-                        <label className="label" htmlFor="selectDataColumn">Select Data Column:</label>
+                        <label className="label" htmlFor="selectDataColumn">Selecione a coluna de texto:</label>
                         <select id="selectDataColumn" className="select" value={dataColumn} onChange={handleDataSelectChange}>
                             <option value="">None</option>
                             {columns.map((column, index) => (
@@ -151,7 +151,7 @@ const App = () => {
                         </select>
                     </div>
                     <div>
-                        <label className="label" htmlFor="selectLabelColumn">Select Label Column:</label>
+                        <label className="label" htmlFor="selectLabelColumn">Selecione a coluna de classificação:</label>
                         <select id="selectLabelColumn" className="select" value={labelColumn} onChange={handleLabelSelectChange}>
                             <option value="">None</option>
                             {columns.map((column, index) => (
